@@ -1,0 +1,22 @@
+# Preset for real corpora.
+#
+# The offline SVD default exists so the synthetic benchmark reproduces with no
+# extra dependencies. It is the wrong choice for real prose: measured on 20
+# Newsgroups, HDBSCAN over TF-IDF+SVD leaves 87% of documents as noise and scores
+# ARI 0.05, because raw lexical space has no density structure for it to find.
+# UMAP builds that structure and takes the same corpus to ARI 0.38.
+#
+#   pip install -e '.[real]'
+#   cohort real-eval --config configs/real.yaml
+semantic:
+  backend: tfidf-svd
+  reducer: umap
+  cluster_dim: 15
+  min_cluster_size: 40
+  min_cluster_size_frac: null
+  min_samples: 8
+  dim: 256
+scoring:
+  aggregation: topk
+  top_k: 2
+  conformal_alpha: 0.05

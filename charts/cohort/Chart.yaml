@@ -1,0 +1,9 @@
+apiVersion: v2
+name: cohort
+description: Peer-baseline anomaly detection for unstructured enterprise data (DSPM)
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords: [dspm, data-security, anomaly-detection, nlp]
+maintainers:
+  - name: Vijay

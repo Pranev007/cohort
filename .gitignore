@@ -1,0 +1,16 @@
+artifacts/
+*.egg-info/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
+.DS_Store
+.idea/
+.vscode/
+*.npy

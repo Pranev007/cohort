@@ -1,0 +1,46 @@
+name: cohort
+
+services:
+  # One-shot: build the corpus, scan it, evaluate. Exits when done.
+  scan:
+    build: .
+    image: cohort:latest
+    command: ["cohort", "demo", "--documents", "15000"]
+    volumes:
+      - artifacts:/app/artifacts
+    environment:
+      OMP_NUM_THREADS: "4"
+
+  api:
+    build: .
+    image: cohort:latest
+    depends_on:
+      scan:
+        condition: service_completed_successfully
+    ports:
+      - "8000:8000"
+    volumes:
+      - artifacts:/app/artifacts
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deploy/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    profiles: ["observability"]
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    ports:
+      - "3000:3000"
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    depends_on: [prometheus]
+    profiles: ["observability"]
+
+volumes:
+  artifacts:

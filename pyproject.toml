@@ -1,0 +1,125 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cohort"
+version = "1.0.0"
+description = "Peer-baseline anomaly detection for unstructured enterprise data — rules-free DSPM"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Vijay" }]
+keywords = ["dspm", "data-security", "anomaly-detection", "document-classification", "nlp"]
+classifiers = [
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+# Core pipeline runs on these alone. No network, no model downloads, no GPU.
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "scikit-learn>=1.4",   # 1.4+ ships HDBSCAN natively
+    "pandas>=2.1",
+    "pyarrow>=14",
+    "typer>=0.9",
+    "rich>=13",
+    "pydantic>=2.5",
+    "PyYAML>=6",
+    "Jinja2>=3.1",
+]
+
+[project.optional-dependencies]
+# Transformer embedding backend — swaps in bge-m3 for the offline default.
+transformers = [
+    "sentence-transformers>=3.0",
+    "torch>=2.2",
+    "onnxruntime>=1.17",
+]
+# Real corpora ingestion: pdf/docx/xlsx/pptx/eml + OCR.
+ingest = [
+    "unstructured[local-inference]>=0.14",
+    "pypdf>=4.0",
+    "python-docx>=1.1",
+    "paddleocr>=2.7",
+    "fasttext-langdetect>=1.0",
+]
+# Real public corpora: 20 Newsgroups + Enron. UMAP matters here — density-based
+# clustering finds almost no structure in raw TF-IDF space on real prose.
+real = [
+    "umap-learn>=0.5",
+]
+# Entity / PII layer.
+entities = [
+    "presidio-analyzer>=2.2",
+    "gliner>=0.2",
+]
+# LLM cluster naming, narration, remediation agent.
+llm = [
+    "anthropic>=0.40",
+    "langgraph>=0.2",
+]
+api = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "psycopg[binary]>=3.1",
+    "qdrant-client>=1.9",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "hypothesis>=6.100",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "types-PyYAML>=6",
+]
+all = ["cohort[transformers,ingest,entities,llm,api,real,dev]"]
+
+[project.scripts]
+cohort = "cohort.cli:app"
+
+[project.urls]
+Repository = "https://github.com/Pranev007/cohort"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+cohort = ["py.typed", "synthorg/data/*.txt"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "SIM", "RUF"]
+# N803/N806/N812: uppercase names are standard notation for matrices in
+# numerical code (X, S, C, Z). Renaming them to satisfy PEP 8 would make the
+# scoring maths harder to read against the equations it implements.
+ignore = ["E501", "B905", "RUF001", "N803", "N806", "N812"]
+
+[tool.mypy]
+python_version = "3.11"
+packages = ["cohort"]
+mypy_path = "src"
+ignore_missing_imports = true
+warn_unused_ignores = false
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+markers = [
+    "slow: full-pipeline tests (deselect with '-m \"not slow\"')",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# FastAPI's dependency-injection idiom is a function call in a default argument.
+"src/cohort/api/*.py" = ["B008"]
+# Typer declares CLI options the same way.
+"src/cohort/cli.py" = ["B008"]

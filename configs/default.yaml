@@ -1,0 +1,48 @@
+synthorg:
+  seed: 1337
+  n_employees: 2000
+  n_documents: 15000
+  anomaly_rate: 0.02
+  multilingual_fraction: 0.08
+  duplicate_rate: 0.06
+  noise_rate: 0.04
+  n_external_partners: 4
+  n_departments: 9
+semantic:
+  backend: tfidf-svd
+  model_name: BAAI/bge-m3
+  max_features: 60000
+  dim: 256
+  reducer: svd
+  cluster_dim: 40
+  min_cluster_size: 25
+  min_cluster_size_frac: 0.015
+  min_samples: 8
+  cluster_selection_epsilon: 0.0
+  noise_reassign_threshold: 0.55
+  name_top_k: 6
+scoring:
+  dirichlet_alpha: 0.5
+  shrinkage_kappa: 25.0
+  aggregation: topk
+  top_k: 2
+  iforest_weight: 0.0
+  iforest_n_estimators: 300
+  robust_passes: 1
+  trim_fraction: 0.05
+  conformal_alpha: 0.05
+  calibration_fraction: 0.3
+  max_feature_surprisal: 12.0
+  min_cohort_for_local_conformal: 50
+lineage:
+  shingle_size: 5
+  num_perm: 128
+  threshold: 0.72
+  n_bands: 32
+explain:
+  top_k_attributions: 3
+  max_counterfactual_edits: 4
+  use_llm: false
+  llm_model: claude-sonnet-5
+paths:
+  root: artifacts

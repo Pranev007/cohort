@@ -1,0 +1,72 @@
+image:
+  repository: ghcr.io/pranev007/cohort
+  tag: "1.0.0"
+  pullPolicy: IfNotPresent
+
+replicaCount: 2
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8000
+
+resources:
+  # Embedding is the memory-hungry stage; scoring is cheap. Requests are sized
+  # for a 15k-document corpus held in memory, limits for roughly 4x that.
+  requests:
+    cpu: "500m"
+    memory: "1Gi"
+  limits:
+    cpu: "2000m"
+    memory: "4Gi"
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 8
+  targetCPUUtilizationPercentage: 70
+
+persistence:
+  enabled: true
+  size: 10Gi
+  storageClass: ""
+  mountPath: /app/artifacts
+
+# Scheduled rescan. A DSPM baseline is only as current as its last scan, and
+# posture drifts continuously as people share things.
+scan:
+  enabled: true
+  schedule: "0 2 * * *"
+  documents: 15000
+  backoffLimit: 2
+  activeDeadlineSeconds: 3600
+
+env:
+  OMP_NUM_THREADS: "4"
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+ingress:
+  enabled: false
+  className: nginx
+  host: cohort.example.com
+  tls: true
+
+serviceMonitor:
+  enabled: false
+  interval: 30s
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
