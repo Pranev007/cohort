@@ -6,6 +6,15 @@ FROM python:3.12-slim AS builder
 WORKDIR /build
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_NO_CACHE_DIR=1
 
+# Apply outstanding Debian security patches. The python:*-slim tags are rebuilt
+# on their own cadence, so a fresh pull routinely lags the security archive by
+# days -- long enough for Trivy to (correctly) fail the build on CVEs that
+# already have fixes available.
+RUN apt-get update \
+ && apt-get upgrade -y --no-install-recommends \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
 COPY pyproject.toml README.md ./
 COPY src ./src
 
@@ -26,6 +35,13 @@ ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     OMP_NUM_THREADS=4
+
+# Same security patches in the runtime stage -- the builder's are discarded with
+# the build layer, and this is the image that actually ships.
+RUN apt-get update \
+ && apt-get upgrade -y --no-install-recommends \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
 # Non-root. The image writes only to /app/artifacts, which is a volume.
 RUN useradd --create-home --uid 10001 cohort

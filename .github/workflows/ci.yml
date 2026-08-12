@@ -93,7 +93,30 @@ jobs:
           docker run --rm cohort:ci cohort version
           docker run --rm cohort:ci \
             sh -c "cohort generate --documents 1500 --out /app/artifacts/corpus && cohort scan --findings 25"
-      - name: trivy scan
+      # Two passes on purpose. The first always succeeds and writes the findings
+      # into the job summary, so the CVE list is readable on the run page even
+      # when the gate below fails. A gate that fails without telling you what it
+      # found costs an extra round trip every time.
+      - name: trivy report
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: cohort:ci
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          format: table
+          output: trivy.txt
+          exit-code: "0"
+      - name: publish findings
+        if: always()
+        run: |
+          {
+            echo "### Trivy: HIGH/CRITICAL with fixes available"
+            echo '```'
+            cat trivy.txt 2>/dev/null || echo "(no report produced)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: trivy gate
         # Pinned to a real released tag. Tags here are v-prefixed; an invalid
         # action reference fails the whole job at "Set up job", before any step
         # runs, which is what happened with the previous value.
@@ -104,5 +127,6 @@ jobs:
           exit-code: "1"
           # Only fail on vulnerabilities that actually have a fix available.
           # Blocking on unfixable base-image CVEs would turn CI red for something
-          # no change to this repository could resolve.
+          # no change to this repository could resolve -- and a permanently red
+          # badge trains everyone to ignore it.
           ignore-unfixed: true
