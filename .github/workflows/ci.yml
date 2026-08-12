@@ -103,18 +103,46 @@ jobs:
           image-ref: cohort:ci
           severity: HIGH,CRITICAL
           ignore-unfixed: true
-          format: table
-          output: trivy.txt
+          format: json
+          output: trivy.json
           exit-code: "0"
       - name: publish findings
         if: always()
+        # Emits each CVE as a workflow error annotation as well as writing the
+        # job summary. Annotations surface through the public check-runs API,
+        # whereas job summaries and raw logs need repo-admin rights -- so this is
+        # the difference between "the build is red" and "the build is red
+        # because of these five packages", for anyone looking from outside.
         run: |
-          {
-            echo "### Trivy: HIGH/CRITICAL with fixes available"
-            echo '```'
-            cat trivy.txt 2>/dev/null || echo "(no report produced)"
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json, os, pathlib, collections
+          p = pathlib.Path("trivy.json")
+          if not p.exists():
+              print("### Trivy\n\n(no report produced)"); raise SystemExit
+          data = json.loads(p.read_text())
+          rows = []
+          for res in data.get("Results") or []:
+              for v in res.get("Vulnerabilities") or []:
+                  rows.append((v.get("Severity"), res.get("Target",""), v.get("PkgName"),
+                               v.get("InstalledVersion"), v.get("FixedVersion"),
+                               v.get("VulnerabilityID")))
+          print("### Trivy: HIGH/CRITICAL with fixes available\n")
+          if not rows:
+              print("None. :white_check_mark:"); raise SystemExit
+          by_pkg = collections.Counter(r[2] for r in rows)
+          print(f"**{len(rows)} findings across {len(by_pkg)} packages.**\n")
+          print("| Severity | Package | Installed | Fixed in | CVE |")
+          print("|---|---|---|---|---|")
+          for sev, tgt, pkg, cur, fix, cve in sorted(rows):
+              print(f"| {sev} | `{pkg}` | {cur} | **{fix}** | {cve} |")
+          # Annotations: one line per package, kept short enough to stay readable.
+          for pkg, n in by_pkg.most_common():
+              worst = [r for r in rows if r[2] == pkg]
+              fixes = sorted({r[4] for r in worst if r[4]})
+              print(f"::error title=Trivy::{pkg} {worst[0][3]} -> fix {','.join(fixes)} "
+                    f"({n} CVE(s): {','.join(sorted({r[5] for r in worst})[:4])})",
+                    file=__import__("sys").stderr)
+          PY
 
       - name: trivy gate
         # Pinned to a real released tag. Tags here are v-prefixed; an invalid
