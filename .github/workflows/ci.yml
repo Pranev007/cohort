@@ -83,8 +83,11 @@ jobs:
           push: false
           load: true
           tags: cohort:ci
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # Layer caching deliberately disabled. Two dependency fixes in a row
+          # showed no change in the scan output, and a stale cached layer is the
+          # likeliest cause; correctness of the shipped image outweighs a couple
+          # of minutes of build time on a repo this size.
+          no-cache: true
       - name: smoke test the image
         # No host bind mount. The image runs as uid 10001 and Docker creates a
         # bind-mount source as root, so the container could not write to it.
@@ -131,15 +134,17 @@ jobs:
               print("None. :white_check_mark:"); raise SystemExit
           by_pkg = collections.Counter(r[2] for r in rows)
           print(f"**{len(rows)} findings across {len(by_pkg)} packages.**\n")
-          print("| Severity | Package | Installed | Fixed in | CVE |")
-          print("|---|---|---|---|---|")
+          print("| Severity | Package | Installed | Fixed in | CVE | Found in |")
+          print("|---|---|---|---|---|---|")
           for sev, tgt, pkg, cur, fix, cve in sorted(rows):
-              print(f"| {sev} | `{pkg}` | {cur} | **{fix}** | {cve} |")
+              print(f"| {sev} | `{pkg}` | {cur} | **{fix}** | {cve} | `{tgt}` |")
           # Annotations: one line per package, kept short enough to stay readable.
           for pkg, n in by_pkg.most_common():
               worst = [r for r in rows if r[2] == pkg]
               fixes = sorted({r[4] for r in worst if r[4]})
+              targets = sorted({r[1] for r in worst})
               print(f"::error title=Trivy::{pkg} {worst[0][3]} -> fix {','.join(fixes)} "
+                    f"in {'; '.join(targets)} "
                     f"({n} CVE(s): {','.join(sorted({r[5] for r in worst})[:4])})",
                     file=__import__("sys").stderr)
           PY
