@@ -86,7 +86,10 @@ def inject(
     elif anomaly == AnomalyType.WRONG_LOCATION:
         state.repo_type = RepoType.ONEDRIVE_PERSONAL
         # Personal-drive copies sit shallower and break inheritance.
-        state.path_depth = int(max(1, state.path_depth - rng.integers(1, 4)))
+        # Narrow the numpy integer at the boundary rather than wrapping the whole
+        # expression: max() over a mixed int/np.int64 pair widens to a union that
+        # int() cannot accept.
+        state.path_depth = max(1, state.path_depth - int(rng.integers(1, 4)))
         state.acl_origin = "explicit"
 
     elif anomaly == AnomalyType.MISLABELED_DOWN:

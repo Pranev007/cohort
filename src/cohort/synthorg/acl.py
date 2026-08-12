@@ -119,12 +119,13 @@ def _entropy(counts: list[int]) -> float:
     total = sum(counts)
     if total <= 0:
         return 0.0
+    # Summed in sorted order: float addition is not associative, so an unsorted
+    # input would make the result depend on iteration order.
     h = 0.0
-    for c in counts:
-        if c <= 0:
-            continue
-        p = c / total
-        h -= p * math.log(p)
+    for c in sorted(counts):
+        if c > 0:
+            p = c / total
+            h -= p * math.log(p)
     return h
 
 
@@ -135,9 +136,21 @@ def posture_features(state: AccessState, org: Organisation) -> dict[str, float |
     number of ACL entries. A single grant to `All Employees` therefore looks very
     different from a single grant to a nine-person contracts team.
     """
+    # Sorted, not raw set order. Python randomises string hashing per process
+    # (PYTHONHASHSEED), so iterating the principal set directly makes the Counter's
+    # insertion order vary between runs — and two features silently inherit that:
+    #
+    #   * `accessor_dept_entropy` sums floats, and float addition is not
+    #     associative, so a different order gives a different last bit;
+    #   * `Counter.most_common` breaks ties by insertion order, so a cohort with
+    #     two equally-common departments could flip `owner_dept_is_modal`.
+    #
+    # The first is cosmetic, the second changes a scored categorical value. Both
+    # made the corpus non-reproducible and were caught by the CI digest check.
     principals = org.resolve(state.group_ids, state.direct_ids)
+    ordered = sorted(principals)
 
-    depts = Counter(org.dept_of(p) for p in principals)
+    depts = Counter(org.dept_of(p) for p in ordered)
     domains = org.domains_of(principals)
     external_domains = (
         {d for d in domains if d != org.people[state.owner_id].domain}
@@ -146,7 +159,9 @@ def posture_features(state: AccessState, org: Organisation) -> dict[str, float |
     )
 
     owner_dept = org.dept_of(state.owner_id)
-    modal_dept = depts.most_common(1)[0][0] if depts else "Unknown"
+    # Explicit tie-break on the department name so the result never depends on
+    # how the Counter happened to be built.
+    modal_dept = min(depts.items(), key=lambda kv: (-kv[1], kv[0]))[0] if depts else "Unknown"
 
     return {
         # categorical

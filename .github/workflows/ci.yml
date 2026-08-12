@@ -86,14 +86,23 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: smoke test the image
+        # No host bind mount. The image runs as uid 10001 and Docker creates a
+        # bind-mount source as root, so the container could not write to it.
+        # The smoke test only needs the pipeline to complete, not to persist.
         run: |
           docker run --rm cohort:ci cohort version
-          docker run --rm -v ${{ github.workspace }}/out:/app/artifacts cohort:ci \
+          docker run --rm cohort:ci \
             sh -c "cohort generate --documents 1500 --out /app/artifacts/corpus && cohort scan --findings 25"
       - name: trivy scan
-        uses: aquasecurity/trivy-action@0.24.0
+        # Pinned to a real released tag. Tags here are v-prefixed; an invalid
+        # action reference fails the whole job at "Set up job", before any step
+        # runs, which is what happened with the previous value.
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: cohort:ci
           severity: HIGH,CRITICAL
           exit-code: "1"
+          # Only fail on vulnerabilities that actually have a fix available.
+          # Blocking on unfixable base-image CVEs would turn CI red for something
+          # no change to this repository could resolve.
           ignore-unfixed: true

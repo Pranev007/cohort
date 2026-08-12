@@ -104,7 +104,11 @@ select = ["E", "F", "I", "N", "UP", "B", "SIM", "RUF"]
 ignore = ["E501", "B905", "RUF001", "N803", "N806", "N812"]
 
 [tool.mypy]
-python_version = "3.11"
+# Deliberately not pinned to a python_version. numpy 2.x ships stubs written with
+# PEP 695 `type` statements, so mypy targeting 3.11 fails inside numpy's own .pyi
+# files before it reaches any of this project's code. Following the interpreter
+# avoids that, and real 3.11 compatibility is covered far better by the CI test
+# matrix actually running pytest on 3.11 than by a type-checker flag.
 packages = ["cohort"]
 mypy_path = "src"
 ignore_missing_imports = true

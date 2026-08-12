@@ -150,8 +150,10 @@ def _entropy(counts: list[int]) -> float:
     total = sum(counts)
     if total <= 0:
         return 0.0
+    # Summed in sorted order: float addition is not associative, so an unsorted
+    # input would make the result depend on iteration order.
     h = 0.0
-    for c in counts:
+    for c in sorted(counts):
         if c > 0:
             p = c / total
             h -= p * math.log(p)
