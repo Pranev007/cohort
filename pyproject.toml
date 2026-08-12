@@ -68,6 +68,10 @@ api = [
     "uvicorn[standard]>=0.29",
     "psycopg[binary]>=3.1",
     "qdrant-client>=1.9",
+    # Transitive via qdrant-client. Floored explicitly because the resolver
+    # otherwise settles on 1.1.2, which carries GHSA-6v7p-g79w-8964 and fails
+    # the container image scan.
+    "msgpack>=1.2.1",
 ]
 dev = [
     "pytest>=8.0",

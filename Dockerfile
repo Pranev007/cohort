@@ -43,6 +43,13 @@ RUN apt-get update \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
+# The application runs entirely out of /opt/venv, but the base image's *system*
+# site-packages ships in the final layer and is scanned too. PATH above already
+# points at the venv, so the system interpreter has to be addressed explicitly --
+# without this, `pip install --upgrade setuptools` silently upgrades only the
+# venv copy and leaves the vulnerable system one in the image (CVE-2025-47273).
+RUN /usr/local/bin/python -m pip install --no-cache-dir --upgrade "setuptools>=78.1.1"
+
 # Non-root. The image writes only to /app/artifacts, which is a volume.
 RUN useradd --create-home --uid 10001 cohort
 COPY --from=builder /opt/venv /opt/venv
