@@ -126,9 +126,10 @@ jobs:
           rows = []
           for res in data.get("Results") or []:
               for v in res.get("Vulnerabilities") or []:
-                  rows.append((v.get("Severity"), res.get("Target",""), v.get("PkgName"),
-                               v.get("InstalledVersion"), v.get("FixedVersion"),
-                               v.get("VulnerabilityID")))
+                  rows.append((v.get("Severity"),
+                               v.get("PkgPath") or res.get("Target",""),
+                               v.get("PkgName"), v.get("InstalledVersion"),
+                               v.get("FixedVersion"), v.get("VulnerabilityID")))
           print("### Trivy: HIGH/CRITICAL with fixes available\n")
           if not rows:
               print("None. :white_check_mark:"); raise SystemExit
