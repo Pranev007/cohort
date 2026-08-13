@@ -114,8 +114,8 @@ jobs:
           # will happily report a bundled wheel or an orphaned dist-info that pip
           # has no idea about, which is the remaining explanation for the two
           # disagreeing. Find the physical artifacts.
-          ART=$(docker run --rm --entrypoint sh cohort:ci -c                   "find / -xdev \( -iname '*setuptools*' -o -iname '*msgpack*' \) \( -name '*.whl' -o -name '*.dist-info' -o -name '*.egg-info' \) 2>/dev/null | head -30"                 | tr '
-' ' ')
+          docker run --rm --entrypoint sh cohort:ci -c 'find / -xdev -iname "*setuptools*" -o -iname "*msgpack*" 2>/dev/null' > /tmp/arts.txt || true
+          ART=$(grep -Ei 'dist-info|egg-info|\.whl' /tmp/arts.txt | head -25 | tr '\n' ' ')
           echo "::error title=On-disk artifacts::${ART:-none found}"
           echo "::error title=Image contents::system[ ${SYS:-none} ] venv[ ${VENV:-none} ] id=${IMAGE_ID:0:19}"
           {
