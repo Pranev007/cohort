@@ -122,6 +122,14 @@ jobs:
             echo "image id: \`${IMAGE_ID}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: export the built image for scanning
+        # Scan a tarball of the image we just built, not a tag. `image-ref` leaves
+        # Trivy to resolve `cohort:ci` by whatever source it prefers, and it was
+        # demonstrably reporting package versions that are not in this image --
+        # setuptools 70.3.0 against an image containing 84.0.0. `docker save`
+        # removes the ambiguity: there is exactly one thing it can be looking at.
+        run: docker save cohort:ci -o /tmp/cohort-image.tar
+
       # Two passes on purpose. The first always succeeds and writes the findings
       # into the job summary, so the CVE list is readable on the run page even
       # when the gate below fails. A gate that fails without telling you what it
@@ -129,7 +137,7 @@ jobs:
       - name: trivy report
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: cohort:ci
+          input: /tmp/cohort-image.tar
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           format: json
@@ -182,7 +190,7 @@ jobs:
         # runs, which is what happened with the previous value.
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: cohort:ci
+          input: /tmp/cohort-image.tar
           severity: HIGH,CRITICAL
           exit-code: "1"
           # Only fail on vulnerabilities that actually have a fix available.
