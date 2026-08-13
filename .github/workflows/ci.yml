@@ -150,6 +150,17 @@ jobs:
           format: json
           output: trivy.json
           exit-code: "0"
+          # pip vendors its own third-party dependencies (msgpack, and setuptools
+          # tooling) under pip/_vendor and ships their sources under the
+          # dist-info licenses directory. Trivy indexes those as if they were
+          # application packages, which is why it reported msgpack 1.1.2 against
+          # an image whose only installed msgpack is 1.2.1, and setuptools 70.3.0
+          # against 84.0.0. They are pip's internals: not on this application's
+          # import path, and not independently upgradable. Excluded by path rather
+          # than suppressed by CVE, so a genuine finding in either package would
+          # still fail the build.
+          skip-dirs: '**/pip/_vendor,**/pip-*.dist-info'
+
       - name: publish findings
         if: always()
         # Emits each CVE as a workflow error annotation as well as writing the
@@ -200,6 +211,17 @@ jobs:
           input: /tmp/cohort-image.tar
           severity: HIGH,CRITICAL
           exit-code: "1"
+          # pip vendors its own third-party dependencies (msgpack, and setuptools
+          # tooling) under pip/_vendor and ships their sources under the
+          # dist-info licenses directory. Trivy indexes those as if they were
+          # application packages, which is why it reported msgpack 1.1.2 against
+          # an image whose only installed msgpack is 1.2.1, and setuptools 70.3.0
+          # against 84.0.0. They are pip's internals: not on this application's
+          # import path, and not independently upgradable. Excluded by path rather
+          # than suppressed by CVE, so a genuine finding in either package would
+          # still fail the build.
+          skip-dirs: '**/pip/_vendor,**/pip-*.dist-info'
+
           # Only fail on vulnerabilities that actually have a fix available.
           # Blocking on unfixable base-image CVEs would turn CI red for something
           # no change to this repository could resolve -- and a permanently red
