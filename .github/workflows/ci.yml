@@ -110,6 +110,13 @@ jobs:
           VENV=$(docker run --rm --entrypoint /opt/venv/bin/pip cohort:ci \
                   list --format=freeze 2>/dev/null | grep -Ei '^(setuptools|msgpack)=' | tr '\n' ' ')
           IMAGE_ID=$(docker images --no-trunc --format '{{.ID}}' cohort:ci | head -1)
+          # pip only reports what is *installed*. Trivy scans the filesystem and
+          # will happily report a bundled wheel or an orphaned dist-info that pip
+          # has no idea about, which is the remaining explanation for the two
+          # disagreeing. Find the physical artifacts.
+          ART=$(docker run --rm --entrypoint sh cohort:ci -c                   "find / -xdev \( -iname '*setuptools*' -o -iname '*msgpack*' \) \( -name '*.whl' -o -name '*.dist-info' -o -name '*.egg-info' \) 2>/dev/null | head -30"                 | tr '
+' ' ')
+          echo "::error title=On-disk artifacts::${ART:-none found}"
           echo "::error title=Image contents::system[ ${SYS:-none} ] venv[ ${VENV:-none} ] id=${IMAGE_ID:0:19}"
           {
             echo "### What the built image actually contains"
